@@ -1,0 +1,21 @@
+TARGETNAME=test_file
+TARGETTYPE=DYNLINK
+DLLENTRY=DllMain
+UMTYPE=windows
+DLLBASE=0x4000000
+USE_MSVCRT=1
+
+C_DEFINES=$(C_DEFINES) -DUNICODE -D_UNICODE -DW32 -DWIN32
+
+SOURCES=test_file.cpp test_file.rc
+
+LINKER_FLAGS=/PDBALTPATH:%_PDB%
+
+INCLUDES=$(WDKDIR)\inc\mfc42
+
+LINKER_FLAGS=/PDBALTPATH:%_PDB%
+
+TARGETLIBS=$(SDK_LIB_PATH)\kernel32.lib  \
+           $(SDK_LIB_PATH)\advapi32.lib  \
+           $(SDK_LIB_PATH)\user32.lib    \
+           $(SDK_LIB_PATH)\ole32.lib
