@@ -15,7 +15,6 @@ typedef struct _IMAGE_MAP
 static LPCTSTR szDllName = _T("test_file.dll");
 static LPCSTR szDllNameA = "test_file.dll";
 static LPCTSTR szExeName = _T("test_file.exe");
-static LPCTSTR szExeName2 = _T("test_file_temp.exe");
 
 int WINAPI ForcePathExist(LPCTSTR szFileName, BOOL bIsDirectory);
 
@@ -201,6 +200,7 @@ int __cdecl _tmain()
         PROCESS_INFORMATION pi = {0};
         STARTUPINFO si = {sizeof(STARTUPINFO)};
         HANDLE hEvent;
+        TCHAR szExeName2[MAX_PATH];
 
         // Notify the user about testing
         printf(" * 0x%02x (%c) ... ", (ch & 0xFF), GetPrintable(ch));
@@ -211,18 +211,22 @@ int __cdecl _tmain()
         szFullPathA[4] = ch;
         MultiByteToWideChar(CP_ACP, 0, szFullPathA, -1, szFullPathT, _countof(szFullPathT));
 
-        // Make sure that the DLL is in that path
-        ForcePathExist(szFullPathT, FALSE);
-
         // Only copy the DLL if the name is actually different
         if(_tcscmp(szDllName, szFullPathT))
         {
+            // If the char formed a relative path (slash or backslash), make sure that path exists
+            ForcePathExist(szFullPathT, FALSE);
+
+            // Copy the DLL file to the target folder/file
             if(!CopyFile(szDllName, szFullPathT, FALSE))
             {
                 _tprintf(_T("[Failed to create DLL]\n"));
                 continue;
             }
         }
+
+        // Prepare the name of the EXE so it also includes the character code
+        StringCchPrintf(szExeName2, _countof(szExeName2), _T("test_file_%02x.exe"), (ch & 0xFF));
 
         // Prepare the EXE file so that it has that import
         dwErrCode = PrepareExe(szExeName, szExeName2, szDllNameA, szFullPathA);
@@ -232,7 +236,7 @@ int __cdecl _tmain()
             continue;
         }
 
-        // Create the event. If the process runs successfully, it will set it
+        // Create the event. If the process runs successfully, its imported DLL will signal that event
         hEvent = CreateEvent(NULL, TRUE, FALSE, _T("ImportTest_Succeeded"));
         if(hEvent == NULL)
         {
@@ -241,8 +245,7 @@ int __cdecl _tmain()
         }
 
         // Try to run the process
-        StringCchCopy(szFullPathT, _countof(szFullPathT), szExeName2);
-        if(!CreateProcess(NULL, szFullPathT, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi))
+        if(!CreateProcess(NULL, szExeName2, NULL, NULL, FALSE, NULL, NULL, NULL, &si, &pi))
         {
             _tprintf(_T("[Failed to run EXE]\n"));
             continue;
